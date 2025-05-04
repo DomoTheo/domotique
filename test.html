@@ -2,86 +2,34 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Assistant Domotique</title>
+  <title>Affiche ce que tu dis</title>
 </head>
 <body>
-  <h1>Assistant Vocal Domotique</h1>
-  <p id="status">Écoute en cours...</p>
+  <h1>Dis quelque chose</h1>
+  <p id="output">Tu n'as encore rien dit.</p>
 
   <script>
-    const synth = window.speechSynthesis;
+    // Vérifie si le navigateur prend en charge la reconnaissance vocale
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'fr-FR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.lang = 'fr-FR';  // Langue : français
+    recognition.continuous = true;  // Permet de reconnaître en continu
+    recognition.interimResults = false;  // Affiche les résultats une fois définitifs
 
-    let maleVoice = null;
-
-    // Charger les voix disponibles et choisir une voix masculine en français
-    function loadVoices() {
-      const voices = synth.getVoices();
-      maleVoice = voices.find(voice =>
-        voice.lang.startsWith('fr') &&
-        (voice.name.toLowerCase().includes('homme') || voice.name.toLowerCase().includes('male'))
-      );
-
-      if (!maleVoice) {
-        console.warn("Voix masculine FR non trouvée, utilisation par défaut.");
-      } else {
-        console.log("Voix masculine trouvée :", maleVoice.name);
-      }
-    }
-
-    // Parler avec la voix masculine si dispo
-    function speak(text) {
-      const utter = new SpeechSynthesisUtterance(text);
-      if (maleVoice) {
-        utter.voice = maleVoice;
-      }
-      synth.speak(utter);
-    }
-
-    // Charger les voix après que le navigateur les a disponibles
-    if (synth.onvoiceschanged !== undefined) {
-      synth.onvoiceschanged = loadVoices;
-    }
-
-    function sendDomoticCommand(state) {
-      const stateUpper = state.toUpperCase();
-      const url = `http://domo.theo.free.fr/update_statuts.php?place=bureau&state=${stateUpper}`;
-      fetch(url)
-        .then(response => {
-          if (response.ok) {
-            speak(`C'est fait, la lumière est ${state === "on" ? "allumée" : "éteinte"}.`);
-            document.getElementById("status").textContent = `Lumière ${state === "on" ? "allumée" : "éteinte"}`;
-          } else {
-            throw new Error("Erreur lors de l'envoi");
-          }
-        })
-    }
-
+    // Fonction qui affiche ce que tu dis
     recognition.onresult = function(event) {
-      const result = event.results[event.results.length - 1][0].transcript.toLowerCase();
-      console.log("Tu as dit :", result);
-      document.getElementById("status").textContent = `Tu as dit : ${result}`;
-
-      if (result.includes("dis siri")) {
-        speak("Je t'écoute");
-
-        if (result.includes("allume") && result.includes("lumière")) {
-          speak("J'allume la lumière.");
-          sendDomoticCommand("on");
-        } else if (result.includes("éteins") && result.includes("lumière")) {
-          speak("J'éteins la lumière.");
-          sendDomoticCommand("off");
-        }
-      }
+      const result = event.results[event.results.length - 1][0].transcript;
+      console.log("Tu as dit : " + result);  // Afficher dans la console pour le débogage
+      document.getElementById("output").textContent = "Tu as dit : " + result;
     };
 
+    // Gère les erreurs de reconnaissance vocale
+    recognition.onerror = function(event) {
+      console.error("Erreur de reconnaissance :", event.error);
+      document.getElementById("output").textContent = "Erreur lors de la reconnaissance.";
+    };
+
+    // Démarre la reconnaissance vocale
     recognition.start();
-    recognition.onend = () => {
-      recognition.start();
-    };
   </script>
 </body>
 </html>
